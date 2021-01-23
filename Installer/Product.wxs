@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?define UpgradeCode = "88EFD7FD-0668-4F64-83CB-D1167D2C1905" ?>
+<?define ProductName = "Windows Webp Explorer Preview" ?>
+<?define Manufacturer = "Nikita Kobzev" ?>
+<?define DLL = "webpext64.dll" ?>
+<!-- <?define ArtifactsFolder = "place_where_binaries_are\" ?> -->
+
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Product Id="*" Name="$(var.ProductName)" Language="1033" Version="1.0.0.0"
+             Manufacturer="$(var.Manufacturer)" UpgradeCode="$(var.UpgradeCode)">
+
+        <Package InstallerVersion="200" Compressed="yes" InstallScope="perUser" InstallPrivileges="limited"
+                 Manufacturer="$(var.Manufacturer)"
+                 Description="Windows Shell extension for preview of webp files in Windows Explorer" 
+                 Keywords="webp shell explorer preview" Platform="x64" />
+
+        <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+        <MediaTemplate EmbedCab="yes" />
+
+        <Feature Id="ProductFeature" Title="Components" Level="1">
+            <ComponentGroupRef Id="CG_BC" />
+        </Feature>
+
+        <Property Id="WIXUI_INSTALLDIR" Value="APPLICATIONFOLDER"/>
+        <UI>
+            <UIRef Id="WixUI_InstallDir" />
+            <Publish Dialog="WelcomeDlg"
+                     Control="Next"
+                     Event="NewDialog"
+                     Value="InstallDirDlg"
+                     Order="2">1</Publish>
+            <Publish Dialog="InstallDirDlg"
+                     Control="Back"
+                     Event="NewDialog"
+                     Value="WelcomeDlg"
+                     Order="2">1</Publish>
+        </UI>
+    </Product>
+
+    <Fragment>
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="LocalAppDataFolder">
+                <Directory Id="APPLICATIONFOLDER" Name="WebpPreviewForWindowsExplorer" />
+            </Directory>
+        </Directory>
+    </Fragment>
+
+    <Fragment>
+        <ComponentGroup Id="CG_BC" Directory="APPLICATIONFOLDER">
+            <Component Id="CMP_BC01" Guid="74A1B501-EEB2-4506-A37C-CFAFCD56FF84" Win64="yes">
+                <File Id="FILE_BC01" Name="$(var.DLL)"
+                      Source="$(var.ArtifactsFolder)$(var.DLL)" SelfRegCost="1"/>
+                <RegistryValue Root="HKCU" Key="Software\$(var.Manufacturer)\$(var.ProductName)" Name="installed"
+                               Type="integer" Value="1" KeyPath="yes" />
+                <RemoveFolder Id="CMP_REM01" Directory="APPLICATIONFOLDER" On="uninstall" />
+            </Component>
+        </ComponentGroup>
+    </Fragment>
+</Wix>
