@@ -18,6 +18,7 @@ set(TARGET_NAME webpext64)
 set(SOURCE_FILES 
  "src/ClassFactory.cpp"
  "src/dllmain.cpp"
+ "src/Registry.cpp"
  "src/ThumbnailProvider.cpp"
  "src/WebpReader.cpp")
 
