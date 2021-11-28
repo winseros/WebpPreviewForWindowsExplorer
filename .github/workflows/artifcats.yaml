@@ -1,0 +1,76 @@
+name: Artifacts
+on:
+  push:
+    branches-ignore:
+      - main
+    tags:
+      - v*
+
+defaults:
+  run:
+    shell: powershell
+
+jobs:
+  release:
+    name: Make artifacts
+    runs-on: windows-2022
+    steps:
+      - name: Set Short Sha
+        run: |
+          echo "git_sha=$('${{github.sha}}'.Substring(0, 7))" >> $env:GITHUB_ENV
+
+      - name: Set Version Information - Main
+        if: ${{startsWith(github.ref, 'refs/tags/v')}}
+        run: |
+          echo "product_version=$('${{github.ref}}-${{github.run_number}}-${{env.git_sha}}' -replace 'refs/tags/v','')" >> $env:GITHUB_ENV
+          echo "product_installer_version=$('${{github.ref}}.${{github.run_number}}' -replace 'refs/tags/v','')" >> $env:GITHUB_ENV
+
+      - name: Set Version Information - Branch
+        if: ${{startsWith(github.ref, 'refs/heads/')}}
+        run: |
+          echo "product_version=$('${{github.ref}}' -replace 'refs/heads/','' -replace '[^\w\d]','_')-${{github.run_number}}-${{env.git_sha}}" >> $env:GITHUB_ENV
+          echo "product_installer_version=0.0.${{github.run_number}}" >> $env:GITHUB_ENV
+
+      - name: Install MSVC 2022
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          path: code
+          submodules: true
+      
+      - name: CMake Cache
+        run: |
+         cmake -S ${{github.workspace}}\code\ -B ${{github.workspace}}\_build\ `
+         -G Ninja -DCMAKE_BUILD_TYPE=Release
+      
+      - name: CMake Build
+        run: cmake --build ${{github.workspace}}\_build\
+
+      - name: CMake Install
+        run: |
+            cmake --install ${{github.workspace}}\_build\ --prefix "${{github.workspace}}\_install\"
+            mkdir ${{github.workspace}}\_artifacts\
+            cp -Path ${{github.workspace}}\_install\bin -Destination "${{github.workspace}}\_artifacts\" -Recurse
+            mv -Path ${{github.workspace}}\_artifacts\bin -Destination "${{github.workspace}}\_artifacts\Windows Webp Explorer Preview"
+     
+      - name: Upload binaries
+        uses: actions/upload-artifact@v2
+        with:
+          name: WebpExplorerPreview-binaries-${{env.product_version}}
+          path: ${{github.workspace}}\_artifacts\
+
+      - name: Build installer
+        run: |
+         $env:Path=$env:Path + ";C:\Program Files (x86)\WiX Toolset v3.11\bin"
+         candle.exe -dArtifactsFolder=${{github.workspace}}\_install\bin\ -dProductVersion="${{env.product_installer_version}}" -out ${{github.workspace}}\_artifacts\WebpInstaller.wixobj ${{github.workspace}}\code\installer\Product.wxs
+         light.exe -ext WixUIExtension -out ${{github.workspace}}\_artifacts\WebpPreviewForWindowsExplorer-${{env.product_installer_version}}.msi ${{github.workspace}}\_artifacts\WebpInstaller.wixobj
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v2
+        with:
+          name: PBOManager-installer-${{env.product_version}}
+          path: ${{github.workspace}}\_artifacts\WebpPreviewForWindowsExplorer-${{env.product_installer_version}}.msi
